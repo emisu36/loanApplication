@@ -13,7 +13,7 @@ library(plotly)
 library(dplyr)
 library(readr)
 
-data <- read_csv("/Users/emsu3617/Desktop/social-media-analysis/loan/analysis_data.csv")
+data <- read_csv("analysis_data.csv")
 data$action_taken <- as.character(data$action_taken)
 data$action_taken <- trimws(data$action_taken)  
 data$action_taken <- factor(data$action_taken) 

@@ -1,13 +1,15 @@
 ---
 title: "Deciphering the Dynamics of Loan Approval: Insights from Financial Data"
-subtitle: "My subtitle if needed"
+subtitle: "Exploring Loan Determinants through Logistic Regression"
 author: 
   - Emily (Ping-Jen) Su
-thanks: "Code and data are available at: https://github.com/emisu36/social-media-analysis"
+thanks: "Code and data are available at: https://github.com/emisu36/loanApplication"
 date: today
 date-format: long
-abstract: "First sentence. Second sentence. Third sentence. Fourth sentence."
+abstract: "This study employs logistic regression to analyze the impact of income and loan amount on loan approval decisions using a dataset of loan applications. The results indicate that while income significantly influences loan approval probabilities, loan amount does not have a statistically significant effect. The model demonstrates moderate predictive ability with an area under the ROC curve of 0.6483, suggesting fair discrimination between approved and not approved applications. Future research should integrate additional predictors such as credit scores and employment status to enhance model accuracy and robustness, and address potential biases in lending practices."
 format: pdf
+fig-pos: 'h'
+toc: true
 number-sections: true
 bibliography: references.bib
 ---
@@ -18,91 +20,179 @@ bibliography: references.bib
 #| message: false
 
 library(tidyverse)
-library(palmerpenguins)
+library(ggplot2)
+library(readr)
+library(arrow)
+
+data <- read_parquet(here::here("data/analysis_data/analysis_data.parquet"))
 ```
 
 
 # Introduction
 
-You can and should cross-reference sections and sub-sections. We use @citeR and @rohan.
+In the rapidly evolving landscape of financial services, the decision-making process surrounding loan approvals remains a critical area of focus. Financial institutions increasingly rely on sophisticated analytical techniques to assess risk, predict loan performance, and ensure the financial health of their portfolios. As consumer and business finance needs continue to diversify, the ability to accurately predict loan approval outcomes becomes paramount. This necessity drives the integration of advanced statistical methods into the loan decision process.
 
-The remainder of this paper is structured as follows. @sec-data....
+The data set at the heart of this study encompasses a range of variables from loan applications, including loan amounts, applicant income levels, and other pertinent financial metrics. These elements are foundational in understanding the financial behavior of applicants and the associated risks lenders undertake. In light of this, logistic regression emerges as a particularly effective tool for this analysis due to its capacity to handle binary outcomes—such as loan approval or denial—which are commonplace in lending scenarios.
 
+Logistic regression is favored in financial risk assessments for its ability to provide probabilities associated with specific outcomes, making it an ideal choice for modeling decisions that are essentially categorical. The model's utility in dealing with scenarios where variables may not necessarily meet the stringent requirements of linear regression—such as normal distribution of error terms or linearity—further underscores its appropriateness for this study.
 
+Moreover, the context of the current economic environment, characterized by fluctuating market conditions and changing regulatory landscapes, adds a layer of relevance to this research. Understanding which factors significantly influence loan approval helps institutions adjust their credit policies to mitigate risks and align with broader economic objectives.
+
+This paper aims to delve into the relationships inherent within the data, exploring how various applicant characteristics and loan features influence the likelihood of loan approval. Through the lens of logistic regression, we seek to uncover significant predictors and provide actionable insights that can guide lending institutions in their decision-making processes.
+
+This study was done possible by @citeR and @rohan.
 
 # Data {#sec-data}
 
-Some of our data is of penguins (@fig-bills), from @palmerpenguins.
+For this study, we utilized data sourced from the 2020 Cooperative Congressional Election Study (CCES) [@ces2020], which we processed using R, a programming language widely employed for statistical analysis [@citeR]. To manage the dataset efficiently, we leveraged tools from the `tidyverse` suite [@citetidyverse], including `ggplot2` for visualization [@citeggplot], `dplyr` for data manipulation [@citedplyr], `readr` for data importing [@citereadr], and `tibble` for data formatting [@citetibble]. Model summaries were generated using the `modelsummary` package [@citemodelsummary]. Data retrieval was facilitated by the `dataverse` package [@citedataverse], while the reliability of our data processing and analysis was verified using the `testthat` package [@citetestthat] The `here` package [@citehere] aided in maintaining file organization and ensuring the reproducibility of our analysis.
+
+## Overview
+
+The data set utilized in this study comprises comprehensive loan application records collected over the recent financial year 2022. Consisting of 905 entries and 99 variables, the data set encapsulates a wide array of information important to understanding the dynamics of loan approval processes. The data includes but is not limited to, applicant income levels, loan amounts, action taken on the application, and demographic information such as ethnicity and sex.
+
+In this analysis, key variables include income, loan_amount, and action_taken, all derived from a comprehensive database maintained by [Federal Financial Institutions Examination Council] under the Home Mortgage Disclosure Act of the United States government. The data is obtained [here](https://ffiec.cfpb.gov/data-publication/snapshot-national-loan-level-dataset/2022). Income is reported on an annual basis ensuring high accuracy and reliability. Loan_amount represents the amount requested by applicants, as recorded at the time of application submission. The variable action_taken categorizes the outcome of loan applications into 'approved' or 'not approved,' providing a clear, though simplistic, measure of loan processing outcomes. While these measures are robust, they carry inherent limitations such as potential biases in loan approval due to unobserved factors like credit history or existing debt, which are not included in this data set."
+
+## Variables of particular interest include:
+
+$\cdot$ \textbf{Loan Amount}: The total amount requested in the loan application.
+
+$\cdot$ \textbf{Income}: The applicant's declared annual income.
+
+$\cdot$ \textbf{Action Taken}: Outcomes of the loan applications categorized as loan originated, application approved but not accepted, and application denied.
+
+These variables, among others, provide a robust foundation for analyzing factors influencing loan approval decisions.
+
 
 ```{r}
-#| label: fig-bills
-#| fig-cap: Bills of penguins
-#| echo: false
-
-ggplot(penguins, aes(x = island, fill = species)) +
-  geom_bar(alpha = 0.8) +
-  scale_fill_manual(values = c("darkorange","purple","cyan4"),
-                    guide = "none") +
-  theme_minimal() +
-  facet_wrap(~species, ncol = 1) +
-  coord_flip()
-```
-
-Talk more about it.
-
-And also planes (@fig-planes). (You can change the height and width, but don't worry about doing that until you have finished every other aspect of the paper - Quarto will try to make it look nice and the defaults usually work well once you have enough text.)
-
-```{r}
-#| label: fig-planes
-#| fig-cap: Relationship between wing length and width
+#| label: fig-tgt
+#| fig-cap: "Figures."
+#| fig-subcap: 
+#| - "Histogram of Loan Amounts across all applications."
+#| - "Box Plot of Income distribution by Loan Approval Status."
+#| layout-ncol: 2
 #| echo: false
 #| warning: false
 #| message: false
 
-analysis_data <- read_csv(here::here("data/analysis_data/analysis_data.csv"))
 
-analysis_data |> 
-  ggplot(aes(x = width, y = length)) +
-  geom_point(alpha = 0.8) +
-  theme_minimal() +
-  labs(x = "Wing width (mm)",
-       y = "Wing length (mm)")
+ggplot(data, aes(x = loan_amount)) +
+  geom_histogram(bins = 30, fill = "blue", color = "black") +
+  labs(title = "Histogram of Loan Amounts",
+       x = "Loan Amount",
+       y = "Frequency")
+
+ggplot(data, aes(x = as.factor(action_taken), y = income, fill = as.factor(action_taken))) +
+  geom_boxplot() +
+  labs(title = "Income Distribution by Loan Approval Status",
+       x = "Loan Approval Status",
+       y = "Income (USD)") +
+  scale_fill_brewer(palette = "Pastel1", name = "Approval Status") +
+  theme_minimal()
+
 ```
 
-Talk way more about it. 
+
+
+
+@fig-tgt (a) illustrates the distribution of loan amounts requested in all loan applications within the dataset. This visualization highlights the range and frequency of different loan amounts, providing insight into the most commonly requested loan sizes as well as the diversity in loan amount requests by potential borrowers. The frequency of each loan amount category is depicted, showing peaks and troughs that suggest preferred loan amounts or thresholds set by lending policies.
+
+
+
+
+@fig-tgt (b) is a boxplot that displays the distribution of applicant incomes segmented by the outcome of the loan application, specifically categorized into 'Loan Originated', 'Application Approved but not Accepted', and 'Application Denied'. The plot enables a comparative analysis of how applicant income might influence the loan decision process. It reveals any patterns in income distribution across different loan outcomes, such as higher incomes potentially correlating with higher approval rates, and helps identify outliers or significant deviations in each category.
+
+
+\newpage
+
+```{r}
+#| label: fig-bar-loan-approval-outcomes
+#| fig-cap: "Bar Chart of Loan Approval Outcomes."
+#| fig-asp: 0.5
+#| echo: false
+#| warning: false
+#| message: false
+
+ggplot(data, aes(x = as.factor(action_taken))) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Frequency of Loan Approval Outcomes",
+       x = "Loan Approval Status",
+       y = "Count") +
+  scale_x_discrete(labels = c("1" = "Loan Originated", "2" = "Application Approved but not Accepted", "3" = "Application Denied")) +
+  theme_minimal()
+
+```
+
+
+
+In @fig-bar-loan-approval-outcomes, the bar chart quantifies the outcomes of all loan applications, categorizing them into 'Loan Originated', 'Application Approved but not Accepted', and 'Application Denied'. This visualization provides a clear and immediate understanding of the distribution of loan outcomes, highlighting the frequency of each decision type. The chart effectively showcases the relative occurrence of each outcome, offering insights into the approval process's overall stringency or leniency.
+
+
+
+## Introduction to the Shiny Application
+To further enhance the accessibility and interactive exploration of the dataset, a [Shiny application](https://ddmje2-emily-su.shinyapps.io/loan/) has been developed (Link to Shiny app: [https://ddmje2-emily-su.shinyapps.io/loan/](https://ddmje2-emily-su.shinyapps.io/loan/)). This web-based tool allows users to dynamically select and visualize data based on various parameters such as loan amount, income, and action taken on the loan. Key features of the application include:
+
+$\cdot$ \textbf{Dynamic Filtering}: Users can adjust sliders to filter applications by income and loan amounts, and select specific outcomes to view.
+
+$\cdot$ \textbf{Interactive Plots}: The application incorporates interactive scatter plots and bar charts, updating in real-time as users change filters. This feature facilitates deeper insights into how different variables correlate and their impact on loan approvals.
+
+$\cdot$ \textbf{Summary Statistics}: Alongside visual tools, the application provides instant statistical summaries based on the filtered data, offering users quick access to mean, median, and standard deviations.
+
+The Shiny application serves as both a standalone tool for stakeholders wishing to explore the data at a granular level and as a complement to the analysis presented in this paper. It is accessible online, providing a user-friendly interface for non-technical users to engage with complex data analyses, thus democratizing access to insights that were traditionally confined to technical audiences.
 
 
 
 # Model
 
-The goal of our modelling strategy is twofold. Firstly,...
-
-Here we briefly describe the Bayesian analysis model used to investigate... Background details and diagnostics are included in [Appendix -@sec-model-details].
-
 ## Model set-up
 
-Define $y_i$ as the number of seconds that the plane remained aloft. Then $\beta_i$ is the wing width and $\gamma_i$ is the wing length, both measured in millimeters.  
+Define $y_i$ as the binary outcome of a loan application, where $y_i = 1$ if the loan is approved and  $y_i = 0$ if it is not. The explanatory variables include applicant's income and the loan amount.
 
-\begin{align} 
-y_i|\mu_i, \sigma &\sim \mbox{Normal}(\mu_i, \sigma) \\
-\mu_i &= \alpha + \beta_i + \gamma_i\\
+
+\begin{align}
+y_i &\sim \mbox{Bernoulli}(p_i) \\
+\log\left(\frac{p_i}{1-p_i}\right) &= \alpha + \beta_1 \times \text{income}_i + \beta_2 \times \text{loan\_amount}_i \\
 \alpha &\sim \mbox{Normal}(0, 2.5) \\
-\beta &\sim \mbox{Normal}(0, 2.5) \\
-\gamma &\sim \mbox{Normal}(0, 2.5) \\
-\sigma &\sim \mbox{Exponential}(1)
+\beta_1, \beta_2, \beta_3 &\sim \mbox{Normal}(0, 2.5)
 \end{align}
 
+
+\begin{itemize}
+\item $y_i$: The binary variable indicating loan approval status.
+\item $p_i$ : The probability that $y_i = 1$, modeled as a function of income and loan amount.
+\item $\alpha$ : The intercept, representing the log-odds of loan approval when all predictors are zero.
+\item $\beta_1$ and $\beta_2$ :The coefficients for the income and loan amount, respectively, which adjust the log odds of loan approval as these predictor values change. 
+\item The model uses a logistic link function, as indicated by the transformation involving the log odds of $p_i$ 
+\end{itemize}
+
+Implementation in R:
+
+The given R script fits this logistic regression model using the glm function from the base R package, tailored to handle binary outcomes with a logit link function. The script processes the data, splits it into training and testing sets, fits the model to the training data, and evaluates its predictive accuracy using the testing set. The evaluation includes calculating the area under the ROC curve to assess the model's discrimination ability between the approved and not approved classes.
+
+This revised section aligns your statistical analysis section with the logistic regression model setup and provides a clear framework for describing how the model relates to the underlying data and the business problem at hand.
 We run the model in R [@citeR] using the `rstanarm` package of @rstanarm. We use the default priors from `rstanarm`.
 
 
 ### Model justification
 
-We expect a positive relationship between the size of the wings and time spent aloft. In particular...
+In financial modeling, particularly in assessing loan approvals, certain factors are intuitively linked to the likelihood of approval. Just as we expect a positive relationship between the size of an aircraft's wings and the duration it can remain aloft, we anticipate that both the loan amount and the applicant's income will significantly influence the decision on whether a loan is approved.
 
-We can use maths by including latex between dollar signs, for instance $\theta$.
+In our model, the income ($\beta_1 \times \text{income}_i$) acts akin to the 'wing width,' where higher income, like broader wings, should theoretically increase stability and capacity, thus enhancing the probability of loan approval. Similarly, the requested loan amount ($\beta_2 \times$ loan amount$_i$) reflects the 'wing length,' where a moderate amount may correlate to optimal performance; too high might suggest risk, and too low might not fulfill the financial requirements of the lender, affecting approval chances.
+
+\begin{align}
+\log\left(\frac{p_i}{1-p_i}\right) &= \alpha + \beta_1 \times \text{income}_i + \beta_2 \times \text{loan\_amount}_i
+\end{align}
+
+We expect:
+\begin{itemize}
+\item $\beta_1 > 0$: Higher income increases the probability of loan approval.
+\item $\beta_2$: The impact of loan amount could be nuanced; a moderate amount may be more favorable than very high or very low amounts, necessitating further exploration in the results.
+\end{itemize}
 
 
 # Results
+
+The effectiveness of our predictive model for loan approvals was evaluated through its performance on a test dataset. Key metrics such as the area under the Receiver Operating Characteristic (ROC) curve and the confusion matrix are used to assess the discrimination ability of the model and its accuracy in classifying loan approvals.
+
 
 Our results are summarized in @tbl-modelresults.
 
@@ -116,100 +206,98 @@ library(rstanarm)
 
 first_model <-
   readRDS(file = here::here("models/first_model.rds"))
+
+second_model <-
+  readRDS(file = here::here("models/second_model.rds"))
+
+# Display model summary
+summary(first_model)
 ```
 
 ```{r}
 #| echo: false
 #| eval: true
 #| label: tbl-modelresults
-#| tbl-cap: "Explanatory models of flight time based on wing width and wing length"
+#| tbl-cap: "Summary Statistics for Logistic Regression Model on Loan Approval"
 #| warning: false
+#| message: false
 
-modelsummary::modelsummary(
-  list(
-    "First model" = first_model
-  ),
-  statistic = "mad",
-  fmt = 2
-)
+# Create a table of model coefficients
+model_coefficients <- broom::tidy(first_model)
+knitr::kable(model_coefficients, caption = "Logistic Regression Model Coefficients")
+
 ```
 
+Interpretation of Coefficients:
 
+$\cdot$ Intercept (3.54899): The positive intercept suggests a high baseline probability of loan approval when loan_amount and income are at their mean values. The statistical significance (p < 0.001, indicated by ***) suggests strong evidence against the null hypothesis of no effect.
+
+$\cdot$ Loan Amount (0.08617): The coefficient for loan_amount is positive but not statistically significant (p = 0.7856), indicating that increases in the loan amount do not significantly affect the odds of loan approval in this model. The high p-value suggests that loan_amount, in the presence of income, may not be a strong predictor.
+
+$\cdot$ Income (1.48238): The coefficient for income is positive and statistically significant (p = 0.0383, indicated by *), implying that higher income significantly increases the odds of loan approval. This supports the hypothesis that applicants with higher incomes are more likely to be approved for loans.
+
+
+We can also find the model Fit Statistics:
+
+Null Deviance vs. Residual Deviance: The reduction in deviance (from 237.05 to 226.27) upon fitting the model indicates that the model with predictors fits the data better than the null model, which includes no predictors.
+
+AIC (232.27): The Akaike Information Criterion value provides a measure of the model quality based on the number of parameters and the goodness of fit. A lower AIC indicates a better model.
+
+
+```{r}
+#| echo: false
+#| eval: true
+#| label: fig-roc
+#| fig-cap: "ROC Curve for Loan Approval Prediction Model"
+#| warning: false
+#| message: false
+
+# Plotting ROC Curve and Calculating AUC
+library(pROC)
+plot(second_model)
+auc(second_model)
+
+```
+
+The Receiver Operating Characteristic (ROC) curve, found in @fig-roc is a graphical plot that illustrates the diagnostic ability of the binary classifier system as its discrimination threshold is varied. The ROC curve for this model is not displayed here but is described by the following:
+
+Area Under the Curve (AUC) of 0.6483: This value indicates moderate predictive accuracy. An AUC of 0.5 suggests no discriminative ability (equivalent to random guessing), while an AUC of 1.0 indicates perfect classification. An AUC of 0.6483 suggests that the model has a fair degree of reliability in distinguishing between approved and not approved loans, though improvements could be beneficial.
 
 
 # Discussion
 
-## First discussion point {#sec-first-point}
+## Economic Significance of Income Over Loan Amount {#sec-first-point}
 
-If my paper were 10 pages, then should be be at least 2.5 pages. The discussion is a chance to show off what you know and what you learnt from all this. 
+The positive and statistically significant coefficient for income highlights its strong influence on loan approval decisions. This suggests that lenders may prioritize an applicant’s financial stability and earning power as indicators of repayment capability over the amount being requested.
 
-## Second discussion point
+This finding could influence lenders to revise their loan assessment strategies, perhaps by weighting income more heavily in their scoring algorithms. For consumers, understanding that their income level plays a critical role could guide them to seek loans more aligned with their financial capability.
 
-## Third discussion point
+## Non-Significance of Loan Amount
+Despite expectations, the loan amount did not significantly affect loan approval in this model. This could indicate that within the range of loan amounts considered, variations do not substantially impact the likelihood of approval once income is accounted for.
+
+This suggests a potential area for lenders to reassess the risk associated with loan amounts. It may be that current practices effectively mitigate the risk of larger loans through pricing (interest rates) rather than outright approval or denial.
+
+
+## Moderate Predictive Power of the Model
+The AUC value of 0.6483 indicates moderate discrimination ability. While the model is statistically significant, its practical effectiveness in predicting loan approval is limited.
+
+This performance level may necessitate the use of this model in conjunction with other decision tools in real-world settings, where a higher accuracy might be crucial for financial decision-making.
 
 ## Weaknesses and next steps
 
-Weaknesses and next steps should also be included.
+Limited Predictor Variables: The model currently includes only income and loan amount. Other significant factors like credit history, employment status, and existing debt levels were not considered but are known to influence loan approval decisions significantly.
 
-\newpage
+Potential Overfitting: While not directly observed, the model’s reliance on a limited dataset and few predictors might not generalize well across different demographic groups or economic conditions.
 
-\appendix
+Assumption of Linearity: The logistic regression assumes a linear relationship between the log odds of the outcome and each predictor. This assumption might oversimplify the actual relationships.
 
-# Appendix {-}
+## Next Steps and Recommendations
+Incorporation of Additional Predictors: Future models should include more variables, such as credit scores, debt-to-income ratios, and perhaps more nuanced demographic factors. This would likely improve the model’s accuracy and robustness.
+
+Exploration of Nonlinear Models: Investigating models that can capture nonlinear relationships and interactions (e.g., ensemble methods like random forests or boosting) could provide a more nuanced understanding and potentially enhance predictive performance.
 
 
-# Additional data details
-
-# Model details {#sec-model-details}
-
-## Posterior predictive check
-
-In @fig-ppcheckandposteriorvsprior-1 we implement a posterior predictive check. This shows...
-
-In @fig-ppcheckandposteriorvsprior-2 we compare the posterior with the prior. This shows... 
-
-```{r}
-#| eval: true
-#| echo: false
-#| message: false
-#| warning: false
-#| label: fig-ppcheckandposteriorvsprior
-#| layout-ncol: 2
-#| fig-cap: "Examining how the model fits, and is affected by, the data"
-#| fig-subcap: ["Posterior prediction check", "Comparing the posterior with the prior"]
-
-pp_check(first_model) +
-  theme_classic() +
-  theme(legend.position = "bottom")
-
-posterior_vs_prior(first_model) +
-  theme_minimal() +
-  scale_color_brewer(palette = "Set1") +
-  theme(legend.position = "bottom") +
-  coord_flip()
-```
-
-## Diagnostics
-
-@fig-stanareyouokay-1 is a trace plot. It shows... This suggests...
-
-@fig-stanareyouokay-2 is a Rhat plot. It shows... This suggests...
-
-```{r}
-#| echo: false
-#| eval: true
-#| message: false
-#| warning: false
-#| label: fig-stanareyouokay
-#| fig-cap: "Checking the convergence of the MCMC algorithm"
-#| fig-subcap: ["Trace plot", "Rhat plot"]
-#| layout-ncol: 2
-
-plot(first_model, "trace")
-
-plot(first_model, "rhat")
-```
-
+Ethical and Bias Considerations: Further research should also examine the fairness and bias implications of predictive modeling in loan approvals. Ensuring that models do not perpetuate existing inequalities is essential for ethical financial practices.
 
 
 \newpage

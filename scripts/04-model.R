@@ -1,12 +1,10 @@
 #### Preamble ####
-# Purpose: Models... [...UPDATE THIS...]
-# Author: Rohan Alexander [...UPDATE THIS...]
-# Date: 11 February 2023 [...UPDATE THIS...]
-# Contact: rohan.alexander@utoronto.ca [...UPDATE THIS...]
+# Purpose: Models the logistics regression
+# Author: Ping-Jen (Emily) Su
+# Date: 17 April 2024 
+# Contact: emily.su@mail.utoronto.ca
 # License: MIT
-# Pre-requisites: [...UPDATE THIS...]
-# Any other information needed? [...UPDATE THIS...]
-
+# Pre-requisites: Data clean and tested
 
 #### Workspace setup ####
 library(tidyverse)
@@ -63,6 +61,10 @@ auc(roc_curve)
 saveRDS(
   fit,
   file = "models/first_model.rds"
+)
+saveRDS(
+  roc_curve,
+  file = "models/second_model.rds"
 )
 
 
